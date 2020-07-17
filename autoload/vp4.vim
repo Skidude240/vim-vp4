@@ -351,22 +351,38 @@ function! vp4#PerforceEdit()
 endfunction
 
 " Call p4 revert.  Confirms before performing the revert.
-function! vp4#PerforceRevert(bang)
+function! vp4#PerforceRevert(bang,...)
     let filename = expand('%')
+
+    call call('vp4#PerforceRevertInternal', [a:bang, filename, join(a:000)])
+
+    " reload the file to refresh &readonly attribute
+    execute 'edit ' filename
+endfunction
+
+" Internal caller for P4 revert to allow some autocommand fun
+" Pull out filename to allow this to wrap into autocommands
+function! vp4#PerforceRevertInternal(bang,filename, ...)
+    let filename = a:filename
     if !s:PerforceAssertOpened(filename) | return | endif
+
+    let perforce_command = 'revert'
 
     if !a:bang
         let do_revert = input('Are you sure you want to revert ' . filename
                 \ . '? [y/n]: ')
     endif
 
-    if a:bang || do_revert ==? 'y'
-        call s:PerforceSystem('revert ' .filename)
-        set nomodified
+    if a:0 > 0
+        for arg in a:000
+            let perforce_command .= ' ' . arg
+        endfor
     endif
 
-    " reload the file to refresh &readonly attribute
-    execute 'edit ' filename
+    if a:bang || do_revert ==? 'y'
+        call s:PerforceSystem(perforce_command . ' ' .filename)
+        set nomodified
+    endif
 endfunction
 " }}}
 
